@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
-import { prompts, answers } from './Prompts';
+
 import { JobsTable } from './JobsTable';
+import { stringSimilarity, jobSimilarity, getFartherJob, jobExists } from './jobUtils.js';
 
 function App() {
   const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
@@ -13,6 +14,7 @@ function App() {
 
   
 
+  //login logic
   function LoginHandler() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('login') != 'success') {
@@ -40,16 +42,43 @@ function App() {
     LoginHandler();
   }, []);
 
-  function handlePrompts() {
-    // Process each prompt sequentially
-    (async () => {
-      for (let i = 0; i < prompts.length; i++) {
-        const promptText = prompts[i];
-        submitEmail(promptText);
-      }
-    })();
-  }
+
+
+
+
+  //job management logic
   function addJob(job) {
+    //check if similar job exists already
+    let similarJob = jobExists(jobsTableRef.current.getJobs(), job);
+    console.log('Similar job check result:', similarJob);
+    if (similarJob != null) {
+      console.log('Similar job already exists, evaluating which is farther between: ', similarJob, job);
+      let fartherJob = getFartherJob(similarJob, job);
+      console.log('Farther job is: ', fartherJob);
+      //remove job if we are about to add a farther one
+      if (fartherJob == job) {
+        console.log("removing similar job as new job is farther");
+        //new job is farther, so remove the existing one and add the new one
+        let index = jobsTableRef.current.getJobs().indexOf(similarJob);
+        fetch('/api/removeJob', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ index: index })
+        })
+        .then(response => response.json())
+        .then(data => {
+          console.log('Removed similar job at index ', index, ': ', data);
+          jobsTableRef.current.updateTable();
+        })
+        .catch(err => {
+          console.error('Error removing similar job:', err);
+        });
+      }
+      else {
+        console.log("not adding job as existing one is farther or equal");
+        return; //existing job is farther or equal, so do not add the new one
+      }
+    }
     // Add each answer to the CSV
     try {
       fetch('/api/addJob', {
@@ -60,9 +89,7 @@ function App() {
       .then(response => response.json())
       .then(data => {
         console.log('Add job response:', data);
-        if (jobsTableRef.current) {
-          jobsTableRef.current.updateTable();
-        }
+        jobsTableRef.current.updateTable();
 
       })
       .catch(err => {
@@ -72,7 +99,7 @@ function App() {
       console.error('Error in addJob function:', err);
     }
     
-
+    
   }
 
   async function removeJob() {
@@ -103,41 +130,45 @@ function App() {
     
   }
 
-  async function submitEmail(promptText) {
-    try {
-      // Mocked response for testing: output is always an array of objects
-      const data = {
-        output: [
-          {
-            job: "Summer 2026 Internship – Digital Agent Development",
-            company: "Vistra Corp",
-            status: "applied"
-          },
-          {
-            job: "Software Engineer, Intern - Summer 2026 Ashburn, VA",
-            company: "Visa",
-            status: "Technical assessment"
-          }
-        ]
-      };
 
-      // If output is a string, parse it; otherwise, use as is
-      let jobsArray = data.output;
-      if (typeof jobsArray === 'string') {
-        jobsArray = JSON.parse(jobsArray);
+
+  //SEND EMAIL TO API AND PROCESS RESPONSE
+  async function submitEmail(promptText) {
+    console.log("Submitting prompt:", promptText);
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: promptText })
+      });
+      const data = await response.json();
+
+      // Expecting a single job object in data.output
+      let job = data.output;
+      if (typeof job === 'string') {
+        job = JSON.parse(job);
       }
 
-      setGenResult(JSON.stringify(jobsArray, null, 2)); // Show nicely formatted result
-
-      // Add each job to the backend
-      jobsArray.forEach(jobObj => addJob(jobObj));
-
+      setGenResult(JSON.stringify(job, null, 2)); // Show nicely formatted single job
+      // Optionally, addJob(job); if you want to save it
+      console.log('Adding generated job:', job);
+      addJob(job);
     } catch (err) {
       setGenResult('Error: ' + err.message);
     }
   }
 
-
+  function pingServer() {
+    fetch('/api/ping', { method: 'GET' })
+      .then(response => response.json())
+      .then(data => {
+        alert('Server response: ' + data.message);
+      })
+      .catch(err => {
+        console.error('Error pinging server:', err);
+        alert('Error pinging server: ' + err.message);
+      });
+  }
 
 
   return (
@@ -157,6 +188,7 @@ function App() {
           </div>
         </div>
       )}
+      {/* //model text box and buttons */}
         <div style={{marginTop:20}}>
           <h3>Ask the model</h3>
           <textarea
@@ -184,6 +216,26 @@ function App() {
             </div>
           )}
         </div>
+        <br />
+        <br />
+        {/* google login stuff */}
+          <div>
+          <button onClick={() => {
+            window.location.href =  '/auth/google';
+          }}>
+            Sign in with Google
+          </button>
+        </div>
+        <br />
+        <br />
+        <button onClick={() => {
+          pingServer();
+        }}>
+          Ping Server
+        </button>
+        <br />
+        <br />
+      {/* job management buttons and table */}
         <div>
           <button onClick={() => {
             removeJob();
@@ -191,20 +243,9 @@ function App() {
             Remove Selected Job
           </button>
         </div>
-        {/* <div>
-          <button onClick={() => {
-            window.location.href =  '/auth/google';
-          }}>
-            Sign in with Google
-          </button>
-        </div> */}
-        {/* <div>
-          <button onClick={async () => {
-            handlePrompts();
-          }}>
-            Process Prompts
-          </button>
-        </div> */}
+
+      
+        
        
         <div>
           <button onClick={() => {

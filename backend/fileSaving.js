@@ -26,32 +26,38 @@ function addJob(job) {
     });
 }
 
+
 function removeJob(index) {
-    const jobsPath = path.join(__dirname, 'jobs.json');
-    fs.readFile(jobsPath, 'utf8', (err, data) => {
-        if (err) {
-            console.error('Error reading jobs:', err);
-            return;
-        }
-        let jobs = [];
-        try {
-            jobs = JSON.parse(data);
-        } catch (e) {
-            console.error('Invalid JSON:', e);
-            return;
-        }
-        if (Array.isArray(jobs) && index >= 0 && index < jobs.length) {
-            jobs.splice(index, 1); // Remove the item at the given index
-            fs.writeFile(jobsPath, JSON.stringify(jobs, null, 2), (err) => {
-                if (err) {
-                    console.error('Error saving jobs:', err);
-                } else {
-                    console.log(`Removed job at index ${index}`);
-                }
-            });
-        } else {
-            console.warn('Index out of bounds or jobs is not an array.');
-        }
+    return new Promise((resolve, reject) => {
+        const jobsPath = path.join(__dirname, 'jobs.json');
+        fs.readFile(jobsPath, 'utf8', (err, data) => {
+            if (err) {
+                console.error('Error reading jobs:', err);
+                return reject('Error reading jobs');
+            }
+            let jobs = [];
+            try {
+                jobs = JSON.parse(data);
+            } catch (e) {
+                console.error('Invalid JSON:', e);
+                return reject('Invalid JSON');
+            }
+            if (Array.isArray(jobs) && index >= 0 && index < jobs.length) {
+                jobs.splice(index, 1); // Remove the item at the given index
+                fs.writeFile(jobsPath, JSON.stringify(jobs, null, 2), (err) => {
+                    if (err) {
+                        console.error('Error saving jobs:', err);
+                        return reject('Error saving jobs');
+                    } else {
+                        console.log(`Removed job at index ${index}`);
+                        return resolve();
+                    }
+                });
+            } else {
+                console.warn('Index out of bounds or jobs is not an array.');
+                return reject('Index out of bounds or jobs is not an array.');
+            }
+        });
     });
 }
     
@@ -67,4 +73,4 @@ function readJobs() {
         return [];
     }
 }
-export { addJob, readJobs };
+export { addJob, readJobs, removeJob };

@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-dotenv.config
+dotenv.config();
 // require('dotenv').config(); // load .env into process.env (must run before using process.env)
 // const express = require('express');
 import express from 'express';
@@ -61,26 +61,50 @@ app.get('/auth/me', (req, res) => {
 });
 
 
-// GenAI/ Gemini integration
-// Import the module and create a single instance that we reuse for requests.
-// The implementation of ./GenAITalk should export a class or factory that provides
-// an async `askGenAI(prompt)` method. See the companion example below.
-import { chatWithAI } from './GenAI.js';
-//const GenAITalk = require('./GenAI');
-//const genAI = new GenAITalk({ apiKey: process.env.LLM_API_KEY });
+//**************TODO AI interaction LINK with microservice
+app.get('/api/ping', async (req, res) => {
+  try {
+    const response = await fetch('https://colony-intl-kyle-diameter.trycloudflare.com/health');
+    const data = await response.json();
+    console.log('Python /health response:', data); // This prints the response
+    console.log('Python /health status:', data.status);
+    res.json({ message: 'pong', pythonHealth: data });
+  } catch (err) {
+    console.error('Error calling Python /health:', err);
+    res.status(500).json({ error: 'Failed to reach Python service' });
+  }
+});
 
-// // Gemini / GenAI Connection
+
+
 app.post('/api/generate', async (req, res) => {
   const { prompt } = req.body || {};
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
     return res.status(400).json({ error: 'Missing or invalid prompt' });
   }
-
+  console.log("calling AI ");
   try {
     // askGenAI should be async and return the model text (or structured response)
-    const output = await chatWithAI(prompt);
+    const response = await fetch('https://colony-intl-kyle-diameter.trycloudflare.com/generate', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        "X-API-KEY": process.env.AI_API_KEY
+       },
+      body: JSON.stringify({ email: prompt,
+        max_new_tokens: 128,
+        temperature: 0.0
+       })
+    })
+    const data = await response.json();
+    let output = data.result || '';
+    if (Array.isArray(output)) {
+      output = output[0]; // Take the first job object
+    }
+    console.log('Generated output:', output);
     return res.json({ output });
-  } catch (error) {
+  } 
+  catch (error) {
     console.error('Error generating response:', error?.message || error);
     // If the underlying library returned an HTTP response, include limited details
     if (error?.response && error.response.data) {
@@ -90,8 +114,13 @@ app.post('/api/generate', async (req, res) => {
   }
 });
 
+
+
+
+
+
 //Job tracking
-import { addJob, readJobs } from './fileSaving.js';
+import { addJob, readJobs, removeJob } from './fileSaving.js';
 
 app.post('/api/addJob', (req, res) => {
 
@@ -120,7 +149,18 @@ app.get('/api/jobs', (req, res) => {
   }
 });
 
-app.post('/api/removeJob', (req, res) => {
+app.post('/api/removeJob', async (req, res) => {
+  const { index } = req.body || {};
+  if (typeof index !== 'number' || index < 0) {
+    return res.status(400).json({ error: 'Missing or invalid index' });
+  }
+  try {
+    await removeJob(index);
+    return res.json({ message: `Job at index ${index} removed successfully` });
+  } catch (error) {
+    console.error('Error removing job:', error?.message || error);
+    return res.status(500).json({ error: 'Error removing job' });
+  }
 });
 
 // Default dev port set to 5000 to avoid conflict with CRA (which uses 3000)

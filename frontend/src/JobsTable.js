@@ -34,7 +34,8 @@ const JobsTable = forwardRef((props, ref) => {
     }
     useImperativeHandle(ref, () => ({
         updateTable,
-        getSelectedJob
+        getSelectedJob,
+        getJobs: () => jobs
     }));
 
     useEffect(() => {
