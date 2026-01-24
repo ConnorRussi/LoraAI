@@ -45,19 +45,37 @@ function stringSimilarity(a, b) {
   return 1 - distance / Math.max(a.length, b.length);
 }
 
+
+function isGenericTitle(title, company) {
+  if (!title) return true;
+  const genericWords = ['role', 'position', 'job', 'profile'];
+  const titleLower = title.toLowerCase();
+  if (company && titleLower.includes(company.toLowerCase())) return true;
+  return genericWords.some(word => titleLower.includes(word));
+}
+
 /**
  * Compute similarity score between two job objects.
- * Considers job title and company name.
- * Returns a score between 0 and 1.
+ * Improved logic for generic titles and company weighting.
  */
 function jobSimilarity(job1, job2) {
   if (!job1 || !job2) return 0;
-  const titleScore = stringSimilarity(job1.job, job2.job);
   const companyScore = stringSimilarity(job1.company, job2.company);
-  // Weighted average: title is more important
-  console.log('comparing jobs:', job1, job2);
-  console.log(`Job similarity - Title: ${titleScore}, Company: ${companyScore}`);
-  return 0.7 * titleScore + 0.3 * companyScore;
+  const title1Generic = isGenericTitle(job1.job, job1.company);
+  const title2Generic = isGenericTitle(job2.job, job2.company);
+
+  if (!title1Generic && !title2Generic) {
+    // Both titles are specific: rely mostly on title
+    const titleScore = stringSimilarity(job1.job, job2.job);
+    return 0.8 * titleScore + 0.2 * companyScore;
+  } else if (title1Generic !== title2Generic) {
+    // One title is generic: require company match, but still need some title similarity
+    const titleScore = stringSimilarity(job1.job, job2.job);
+    return 0.5 * titleScore + 0.5 * companyScore;
+  } else {
+    // Both titles are generic: only match if company is a near-exact match
+    return companyScore;
+  }
 }
 
 /**
