@@ -47,11 +47,9 @@ function stringSimilarity(a, b) {
 
 
 function isGenericTitle(title, company) {
-  if (!title) return true;
-  const genericWords = ['role', 'position', 'job', 'profile'];
-  const titleLower = title.toLowerCase();
-  if (company && titleLower.includes(company.toLowerCase())) return true;
-  return genericWords.some(word => titleLower.includes(word));
+  if (!title || !company) return false;
+  const pattern = new RegExp(`^\\s*${company}\\s+(role|position|job)\\s*$`, 'i');
+  return pattern.test(title.trim());
 }
 
 /**
@@ -61,21 +59,19 @@ function isGenericTitle(title, company) {
 function jobSimilarity(job1, job2) {
   if (!job1 || !job2) return 0;
   const companyScore = stringSimilarity(job1.company, job2.company);
-  const title1Generic = isGenericTitle(job1.job, job1.company);
-  const title2Generic = isGenericTitle(job2.job, job2.company);
-
-  if (!title1Generic && !title2Generic) {
-    // Both titles are specific: rely mostly on title
-    const titleScore = stringSimilarity(job1.job, job2.job);
-    return 0.8 * titleScore + 0.2 * companyScore;
-  } else if (title1Generic !== title2Generic) {
-    // One title is generic: require company match, but still need some title similarity
-    const titleScore = stringSimilarity(job1.job, job2.job);
-    return 0.5 * titleScore + 0.5 * companyScore;
-  } else {
-    // Both titles are generic: only match if company is a near-exact match
-    return companyScore;
+  const isGeneric1 = isGenericTitle(job1.job, job1.company);
+  const isGeneric2 = isGenericTitle(job2.job, job2.company);
+  if (isGeneric1 || isGeneric2) {
+    // If either title is generic, only match if company matches exactly
+    if (job1.company && job2.company && job1.company.toLowerCase() === job2.company.toLowerCase()) {
+      return 0.95; // treat as strong match
+    } else {
+      return 0.1; // treat as weak match if company doesn't match
+    }
   }
+  // Otherwise, use normal weighted average
+  const titleScore = stringSimilarity(job1.job, job2.job);
+  return 0.7 * titleScore + 0.3 * companyScore;
 }
 
 /**
