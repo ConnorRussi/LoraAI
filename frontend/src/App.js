@@ -220,9 +220,9 @@ function App() {
         <br />
         {/* google login stuff */}
           <div>
-          <button onClick={() => {
-            window.location.href =  '/auth/google';
-          }}>
+              <button onClick={() => {
+                window.location.href = 'http://localhost:5000/auth/google';
+              }}>
             Sign in with Google
           </button>
         </div>

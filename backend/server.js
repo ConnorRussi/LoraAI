@@ -12,7 +12,7 @@ import cors from 'cors';
 // const session = require('express-session');
 import session from 'express-session';
 // const oAuth = require('./oAuth.js');
-import * as oAuth from './oAuth.js';
+import { redirectToGoogle, googleCallback } from './oAuth.js';
 
 // Check for required env vars
 if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
@@ -21,23 +21,30 @@ if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !proce
 }
 
 const app = express();
+
+// Trust the proxy (Render/Heroku/etc) so secure cookies work
+app.set('trust proxy', 1);
+
 app.use(cors({
-  origin: 'http://localhost:3000', // React dev server
+  origin: process.env.CLIENT_URL || 'http://localhost:3000', // Allow configuring client URL
   credentials: true
 }));
 app.use(express.json());
 
 
-// session middleware (development: in-memory store; use redis store in prod)
+// session middleware
+// NOTE: We are using the default MemoryStore for this portfolio demo.
+// For a large-scale production app, you would use a dedicated store like 'connect-redis'.
 app.use(session({
   name: 'sid',
-  secret: process.env.SESSION_SECRET || 'change_this_in_prod',
+  secret: process.env.SESSION_SECRET || 'dev_secret_key',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    httpOnly: true,
-    secure: false, // true when using https in prod
-    maxAge: 24 * 60 * 60 * 1000 // 1 day
+    httpOnly: true,                 // Prevents client-side JS from reading the cookie
+    secure: process.env.NODE_ENV === 'production', // true = only send over HTTPS (Required for Render)
+    sameSite: 'lax',                // CSRF protection
+    maxAge: 24 * 60 * 60 * 1000     // 1 day
   }
 }));
 
@@ -47,17 +54,16 @@ app.get("/", (req, res) => {
   res.send("Google OAuth demo running");
 });
 
-app.get("/auth/google", (req, res) => {
- oAuth.redirectToAppWithLoginSuccess(res);
-});
-
-app.get("/auth/google/callback", async (req, res) => {
-  oAuth.googleAuthCallbackHandler(req, res);
-});
-
+// Minimal Google OAuth endpoints
+app.get("/auth/google", redirectToGoogle);
+app.get("/auth/google/callback", googleCallback);
 
 app.get('/auth/me', (req, res) => {
- oAuth.authMeHandler(req, res);
+  if (req.session.user) {
+    res.json({ user: req.session.user });
+  } else {
+    res.status(401).json({ error: 'Not authenticated' });
+  }
 });
 
 
