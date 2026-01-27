@@ -3,8 +3,12 @@ dotenv.config();
 // require('dotenv').config(); // load .env into process.env (must run before using process.env)
 // const express = require('express');
 import express from 'express';
-// const path = require('path');
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // const cors = require('cors');
 import cors from 'cors';
 import { google } from 'googleapis';
@@ -51,9 +55,16 @@ app.use(session({
 }));
 
 
-// Home route
-app.get("/", (req, res) => {
-  res.send("Google OAuth demo running");
+// Serve static files from the React app
+const buildPath = path.join(__dirname, '..', 'frontend', 'build');
+app.use(express.static(buildPath));
+
+// API routes above...
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(buildPath, 'index.html'));
 });
 
 // Minimal Google OAuth endpoints
