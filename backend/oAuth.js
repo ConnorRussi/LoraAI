@@ -1,6 +1,8 @@
 // const { OAuth2Client } = require('google-auth-library');
 import { OAuth2Client } from 'google-auth-library';
 
+
+
 // Helper to get client lazily (so env vars are loaded first)
 function getClient() {
   return new OAuth2Client(
@@ -15,7 +17,11 @@ function redirectToGoogle(req, res) {
   const client = getClient();
   const url = client.generateAuthUrl({
     access_type: 'offline',
-    scope: ['email', 'profile'],
+    scope: [
+      'email', 
+      'profile',
+      'https://www.googleapis.com/auth/gmail.readonly' 
+    ],
     prompt: 'consent',
   });
   res.redirect(url);
@@ -39,6 +45,7 @@ async function googleCallback(req, res) {
     const payload = ticket.getPayload();
 
     // 2. Store user in session
+    req.session.tokens = tokens; // Save tokens to make API calls later
     req.session.user = {
       googleId: payload.sub,
       name: payload.name,
@@ -46,13 +53,18 @@ async function googleCallback(req, res) {
       picture: payload.picture
     };
 
-    // 3. Redirect back to frontend
+    // 3. Save tokens to session or database for later use
+    req.session.tokens = tokens;
+
+    // 4. Redirect back to frontend
     res.redirect('http://localhost:3000/?login=success');
   } catch (err) {
     console.error('OAuth Error:', err);
     res.status(500).send('OAuth error: ' + err.message);
   }
 }
+
+
 
 export { redirectToGoogle, googleCallback };
 

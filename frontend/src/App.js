@@ -48,6 +48,12 @@ function App() {
 
   //job management logic
   function addJob(job) {
+    // Check if company name contains variations of "n/a"
+    if (job && job.company && /^(n[\.\/]?a\.?|not applicable|not available)$/i.test(job.company.trim())) {
+      console.log('Skipping job as company is listed as N/A:', job);
+      return;
+    }
+
     //check if similar job exists already
     let similarJob = jobExists(jobsTableRef.current.getJobs(), job);
     console.log('Similar job check result:', similarJob);
@@ -170,6 +176,42 @@ function App() {
       });
   }
 
+  // Example call to scan emails
+  function scanEmails() {
+    const dateInput = window.prompt("Enter start date (MM/DD/YYYY):", "01/01/2026");
+    if (!dateInput) return;
+
+    console.log('Scanning emails form:', dateInput);
+    fetch(`/api/scan-emails?since=${encodeURIComponent(dateInput)}`)
+      .then(response => {
+        if (response.status === 401) {
+          alert('Please sign in with Google first!');
+          return null;
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (!data) return;
+        if (data.error) {
+          console.error('Scan error:', data.error);
+          alert('Error: ' + data.error);
+        } else {
+          console.log('Emails found:', data.emails);
+          alert(`Found ${data.count} emails! Check console for details.`);
+          for(let i = 0; i < data.count; i++) {
+            const email = data.emails[i];
+            // Format the email data to give the model better context
+            const formattedPrompt = `From: ${email.from}\nSubject: ${email.subject}\nDate: ${email.date}\n\n${email.snippet}`;
+            submitEmail(formattedPrompt);
+          }
+        }
+      })
+      .catch(err => {
+        console.error('Error scanning emails:', err);
+      });
+      
+  }
+
 
   return (
     <div className="App">
@@ -232,6 +274,13 @@ function App() {
           pingServer();
         }}>
           Ping Server
+        </button>
+        <br />
+        <br />
+        <button onClick={() => {
+          scanEmails();
+        }}>
+          Scan Emails (Select Date)
         </button>
         <br />
         <br />

@@ -7,6 +7,7 @@ import express from 'express';
 import path from 'path';
 // const cors = require('cors');
 import cors from 'cors';
+import { google } from 'googleapis';
 
 //const { OAuth2Client } = require('google-auth-library');
 // const session = require('express-session');
@@ -21,6 +22,7 @@ if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !proce
 }
 
 const app = express();
+const AIURL = process.env.AI_API_URL || 'https://relates-carbon-frog-leonard.trycloudflare.com';
 
 // Trust the proxy (Render/Heroku/etc) so secure cookies work
 app.set('trust proxy', 1);
@@ -70,7 +72,7 @@ app.get('/auth/me', (req, res) => {
 //**************TODO AI interaction LINK with microservice
 app.get('/api/ping', async (req, res) => {
   try {
-    const response = await fetch('https://colony-intl-kyle-diameter.trycloudflare.com/health');
+    const response = await fetch(`${AIURL}/health`);
     const data = await response.json();
     console.log('Python /health response:', data); // This prints the response
     console.log('Python /health status:', data.status);
@@ -91,7 +93,7 @@ app.post('/api/generate', async (req, res) => {
   console.log("calling AI ");
   try {
     // askGenAI should be async and return the model text (or structured response)
-    const response = await fetch('https://colony-intl-kyle-diameter.trycloudflare.com/generate', {
+    const response = await fetch(`${AIURL}/generate`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -166,6 +168,86 @@ app.post('/api/removeJob', async (req, res) => {
   } catch (error) {
     console.error('Error removing job:', error?.message || error);
     return res.status(500).json({ error: 'Error removing job' });
+  }
+});
+
+// Gmail API Endpoint
+app.get('/api/scan-emails', async (req, res) => {
+  if (!req.session.tokens) {
+    return res.status(401).json({ error: 'Not authenticated with Google' });
+  }
+
+  try {
+    const auth = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+    auth.setCredentials(req.session.tokens);
+
+    const gmail = google.gmail({ version: 'v1', auth });
+
+    // Handle date filter (expecting MM/DD/YYYY from frontend)
+    let dateString = '';
+    
+    if (req.query.since) {
+      const parts = req.query.since.split('/');
+      if (parts.length === 3) {
+        // Convert MM/DD/YYYY -> YYYY/MM/DD for Gmail API
+        dateString = `${parts[2]}/${parts[0]}/${parts[1]}`;
+      }
+    }
+
+    // Default to 7 days ago if no valid date provided
+    if (!dateString) {
+      const date = new Date();
+      date.setDate(date.getDate() - 7);
+      dateString = date.toISOString().split('T')[0].replace(/-/g, '/');
+    }
+    
+    console.log(`Scanning emails after ${dateString}...`);
+
+    const response = await gmail.users.messages.list({
+      userId: 'me',
+      q: `category:primary label:INBOX after:${dateString}`,
+      maxResults: 100 // Limit to 100 emails
+    });
+
+    const messages = response.data.messages || [];
+    const emails = [];
+
+    // Fetch details for each message
+    for (const msg of messages) {
+      const details = await gmail.users.messages.get({
+        userId: 'me',
+        id: msg.id,
+        format: 'full' // Get headers and snippet
+      });
+      
+      const payload = details.data.payload;
+      const headers = payload.headers;
+      const subject = headers.find(h => h.name === 'Subject')?.value || '(No Subject)';
+      const from = headers.find(h => h.name === 'From')?.value || '(Unknown)';
+      const dateHeader = headers.find(h => h.name === 'Date')?.value;
+      
+      emails.push({
+        id: msg.id,
+        subject,
+        from,
+        date: dateHeader,
+        snippet: details.data.snippet
+      });
+    }
+
+    res.json({ count: emails.length, emails });
+
+  } catch (error) {
+    console.error('Gmail API Error:', error);
+    // If token is expired, we might get a 401 here.
+    if (error.code === 401) {
+       return res.status(401).json({ error: 'Token expired or invalid', details: error.message });
+    }
+    res.status(500).json({ error: 'Failed to fetch emails', details: error.message });
   }
 });
 

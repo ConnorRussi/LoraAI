@@ -1,0 +1,12 @@
+{
+  "name": "loraai2",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "deploy:wrangler": "npm run build:frontend && npx wrangler deploy --assets=./frontend/build"
+  },
+  "dependencies": {
+    "googleapis": "^170.1.0"
+  }
+}
