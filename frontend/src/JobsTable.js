@@ -1,6 +1,6 @@
 import React, { useState, useImperativeHandle, forwardRef, useEffect } from "react";
 
-const JobsTable = forwardRef((props, ref) => {
+const JobsTable = forwardRef(({ onRowRemove }, ref) => {
     const [jobs, setJobs] = useState([]);
     const [selectedJobIndex, setSelectedJobIndex] = useState(null);
 
@@ -47,8 +47,15 @@ const JobsTable = forwardRef((props, ref) => {
         console.log("Selected job index:", index);
     }
 
+    const handleRowClick = (index) => {
+        selectAJob(index);
+        if (typeof onRowRemove === 'function') {
+            onRowRemove(index);
+        }
+    };
+
     return (
-        <table>
+        <table className="jobs-table">
             <thead>
                 <tr>
                     <th>Job</th>
@@ -60,8 +67,8 @@ const JobsTable = forwardRef((props, ref) => {
                 {(Array.isArray(jobs) ? jobs : []).map((job, index) => (
                     <tr
                         key={index}
-                        onClick={() => selectAJob(index)}
-                        style={{ cursor: 'pointer' }}
+                        onClick={() => handleRowClick(index)}
+                        className={selectedJobIndex === index ? 'selected' : ''}
                     >
                         <td>{job.job}</td>
                         <td>{job.company}</td>

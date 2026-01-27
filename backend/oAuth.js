@@ -23,6 +23,7 @@ function redirectToGoogle(req, res) {
       'https://www.googleapis.com/auth/gmail.readonly' 
     ],
     prompt: 'consent',
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI
   });
   res.redirect(url);
 }
@@ -56,8 +57,10 @@ async function googleCallback(req, res) {
     // 3. Save tokens to session or database for later use
     req.session.tokens = tokens;
 
-    // 4. Redirect back to frontend
-    res.redirect('http://localhost:3000/?login=success');
+    // 4. Redirect back to frontend (configure via CLIENT_URL for production)
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    const redirectTarget = `${clientUrl}/?login=success`;
+    res.redirect(redirectTarget);
   } catch (err) {
     console.error('OAuth Error:', err);
     res.status(500).send('OAuth error: ' + err.message);
