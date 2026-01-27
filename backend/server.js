@@ -26,7 +26,7 @@ if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !proce
 }
 
 const app = express();
-const AIURL = process.env.AI_API_URL || 'https://relates-carbon-frog-leonard.trycloudflare.com';
+const AIURL = process.env.AI_API_URL;
 
 // Trust the proxy (Render/Heroku/etc) so secure cookies work
 app.set('trust proxy', 1);
@@ -63,7 +63,8 @@ app.use(express.static(buildPath));
 
 // The "catchall" handler: for any request that doesn't
 // match one above, send back React's index.html file.
-app.get('*', (req, res) => {
+// Express 5 requires a regex for wildcard matching
+app.get(/^(?!\/api).+/, (req, res) => {
   res.sendFile(path.join(buildPath, 'index.html'));
 });
 
