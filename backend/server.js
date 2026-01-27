@@ -59,15 +59,6 @@ app.use(session({
 const buildPath = path.join(__dirname, '..', 'frontend', 'build');
 app.use(express.static(buildPath));
 
-// API routes above...
-
-// The "catchall" handler: for any request that doesn't
-// match one above, send back React's index.html file.
-// Express 5 requires a regex for wildcard matching
-app.get(/^(?!\/api).+/, (req, res) => {
-  res.sendFile(path.join(buildPath, 'index.html'));
-});
-
 // Minimal Google OAuth endpoints
 app.get("/auth/google", redirectToGoogle);
 app.get("/auth/google/callback", googleCallback);
@@ -261,6 +252,11 @@ app.get('/api/scan-emails', async (req, res) => {
     }
     res.status(500).json({ error: 'Failed to fetch emails', details: error.message });
   }
+});
+
+// SPA catchall must come last: serve React index for non-API/non-auth routes
+app.get(/^(?!\/(api|auth)).*/, (req, res) => {
+  res.sendFile(path.join(buildPath, 'index.html'));
 });
 
 // Default dev port set to 5000 to avoid conflict with CRA (which uses 3000)

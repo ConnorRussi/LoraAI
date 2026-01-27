@@ -21,6 +21,7 @@ function App() {
   //login logic
   function LoginHandler() {
     const params = new URLSearchParams(window.location.search);
+    console.log('[Auth] LoginHandler params:', params.toString());
     if (params.get('login') !== 'success') {
       return;
     }
@@ -30,6 +31,7 @@ function App() {
     })
       .then(response => response.json())
       .then(data => {
+        console.log('[Auth] /auth/me response user:', data.user);
         setUser(data.user);
         setSuccessModalOpen(true);
       })
@@ -37,12 +39,12 @@ function App() {
         console.error('Error fetching user info:', err);
       });
       // Clean up the URL
-        setScanLoading(true);
       const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
       window.history.replaceState(null, '', newUrl);
   }
   useEffect(() => {
     // Check if redirected after login
+    console.log('[Init] App mounted, running LoginHandler');
     LoginHandler();
   }, []);
 
@@ -143,7 +145,7 @@ function App() {
 
   //SEND EMAIL TO API AND PROCESS RESPONSE
   async function submitEmail(promptText) {
-    console.log("Submitting prompt:", promptText);
+    console.log('[AI] Submitting prompt:', promptText);
     setAiLoading(true);
     try {
       const response = await fetch('/api/generate', {
@@ -161,11 +163,13 @@ function App() {
 
       setGenResult(JSON.stringify(job, null, 2)); // Show nicely formatted single job
       // Optionally, addJob(job); if you want to save it
-      console.log('Adding generated job:', job);
+      console.log('[AI] Adding generated job:', job);
       addJob(job);
     } catch (err) {
       setGenResult('Error: ' + err.message);
+      console.error('[AI] Error generating job:', err);
     } finally {
+      console.log('[AI] Done, clearing loading state');
       setAiLoading(false);
     }
   }
@@ -187,7 +191,7 @@ function App() {
     const dateInput = window.prompt("Enter start date (MM/DD/YYYY):", "01/01/2026");
     if (!dateInput) return;
 
-    console.log('Scanning emails form:', dateInput);
+    console.log('[Scan] Scanning emails from date:', dateInput);
     setEmailStatus('Scanning...');
     setScanLoading(true);
     setEmails([]);
@@ -206,7 +210,7 @@ function App() {
           alert('Error: ' + data.error);
           setEmailStatus('');
         } else {
-          console.log('Emails found:', data.emails);
+          console.log('[Scan] Emails found:', data.emails);
           setEmailStatus(`Found ${data.count} email(s)`);
           setEmails(Array.isArray(data.emails) ? data.emails : []);
           for(let i = 0; i < data.count; i++) {
@@ -218,10 +222,11 @@ function App() {
         }
       })
       .catch(err => {
-        console.error('Error scanning emails:', err);
+        console.error('[Scan] Error scanning emails:', err);
         setEmailStatus('');
       })
       .finally(() => {
+        console.log('[Scan] Done, clearing loading state');
         setScanLoading(false);
       });
       
@@ -233,6 +238,7 @@ function App() {
       setEmailStatus('No jobs to clear');
       return;
     }
+    console.log('[Jobs] Clearing all jobs, count:', currentJobs.length);
     setEmailStatus('Clearing jobs...');
     // Remove from the end to keep indices valid
     for (let i = currentJobs.length - 1; i >= 0; i -= 1) {
@@ -244,11 +250,12 @@ function App() {
           body: JSON.stringify({ index: i })
         });
       } catch (err) {
-        console.error('Error clearing job at index', i, err);
+        console.error('[Jobs] Error clearing job at index', i, err);
       }
     }
     jobsTableRef.current?.updateTable();
     setEmailStatus('All jobs cleared');
+    console.log('[Jobs] All jobs cleared');
   };
 
 
@@ -261,7 +268,7 @@ function App() {
             <h2>Login Successful</h2>
             {user && (
               <div className="user-meta">
-                <img src={user.picture} alt="User Profile" />
+                <img src={user.picture} alt="User Profile" className="avatar" onError={(e) => { console.warn('[Auth] Avatar failed to load, src=', user.picture); e.target.style.display = 'none'; }} />
                 <div>
                   <p className="label">Name</p>
                   <p>{user.name}</p>
