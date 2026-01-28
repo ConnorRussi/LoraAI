@@ -53,13 +53,18 @@ async function googleCallback(req, res) {
       picture: payload.picture
     };
 
-    // 3. Save tokens to session or database for later use
-    req.session.tokens = tokens;
+    // 3. Save session before redirecting (IMPORTANT for production)
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).send('Session save error');
+      }
 
-    // 4. Redirect back to frontend (configure via CLIENT_URL for production)
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
-    const redirectTarget = `${clientUrl}/?login=success`;
-    res.redirect(redirectTarget);
+      // 4. Redirect back to frontend (configure via CLIENT_URL for production)
+      const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+      const redirectTarget = `${clientUrl}/?login=success`;
+      res.redirect(redirectTarget);
+    });
   } catch (err) {
     console.error('OAuth Error:', err);
     res.status(500).send('OAuth error: ' + err.message);
