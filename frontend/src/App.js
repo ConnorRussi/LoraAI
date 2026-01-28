@@ -14,6 +14,8 @@ function App() {
   const [emailStatus, setEmailStatus] = useState('');
   const [scanLoading, setScanLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [emailTotal, setEmailTotal] = useState(0);
+  const [emailProcessed, setEmailProcessed] = useState(0);
   const jobsTableRef = useRef(); // <-- Add this line
 
   
@@ -53,15 +55,16 @@ function App() {
 
 
   //job management logic
-  function addJob(job) {
+  async function addJob(job) {
     // Check if company name contains variations of "n/a"
     if (job && job.company && /^(n[./]?a\.?|not applicable|not available)$/i.test(job.company.trim())) {
       console.log('Skipping job as company is listed as N/A:', job);
       return;
     }
 
+    const existingJobs = jobsTableRef.current?.getJobs?.() || [];
     //check if similar job exists already
-    let similarJob = jobExists(jobsTableRef.current.getJobs(), job);
+    let similarJob = jobExists(existingJobs, job);
     console.log('Similar job check result:', similarJob);
     if (similarJob !== null) {
       console.log('Similar job already exists, evaluating which is farther between: ', similarJob, job);
@@ -71,20 +74,19 @@ function App() {
       if (fartherJob === job) {
         console.log("removing similar job as new job is farther");
         //new job is farther, so remove the existing one and add the new one
-        let index = jobsTableRef.current.getJobs().indexOf(similarJob);
-        fetch('/api/removeJob', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ index: index })
-        })
-        .then(response => response.json())
-        .then(data => {
+        let index = existingJobs.indexOf(similarJob);
+        try {
+          const response = await fetch('/api/removeJob', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ index: index })
+          });
+          const data = await response.json();
           console.log('Removed similar job at index ', index, ': ', data);
-          jobsTableRef.current.updateTable();
-        })
-        .catch(err => {
+          await jobsTableRef.current?.updateTable?.();
+        } catch (err) {
           console.error('Error removing similar job:', err);
-        });
+        }
       }
       else {
         console.log("not adding job as existing one is farther or equal");
@@ -93,20 +95,14 @@ function App() {
     }
     // Add each answer to the CSV
     try {
-      fetch('/api/addJob', {
+      const response = await fetch('/api/addJob', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ job: job })
-      })
-      .then(response => response.json())
-      .then(data => {
-        console.log('Add job response:', data);
-        jobsTableRef.current.updateTable();
-
-      })
-      .catch(err => {
-        console.error('Error adding job:', err);
       });
+      const data = await response.json();
+      console.log('Add job response:', data);
+      await jobsTableRef.current?.updateTable?.();
     } catch (err) {
       console.error('Error in addJob function:', err);
     }
@@ -164,7 +160,7 @@ function App() {
       setGenResult(JSON.stringify(job, null, 2)); // Show nicely formatted single job
       // Optionally, addJob(job); if you want to save it
       console.log('[AI] Adding generated job:', job);
-      addJob(job);
+      await addJob(job);
     } catch (err) {
       setGenResult('Error: ' + err.message);
       console.error('[AI] Error generating job:', err);
@@ -187,7 +183,7 @@ function App() {
   }
 
   // Example call to scan emails
-  function scanEmails() {
+  async function scanEmails() {
     const dateInput = window.prompt("Enter start date (MM/DD/YYYY):", "01/01/2026");
     if (!dateInput) return;
 
@@ -195,40 +191,47 @@ function App() {
     setEmailStatus('Scanning...');
     setScanLoading(true);
     setEmails([]);
-    fetch(`/api/scan-emails?since=${encodeURIComponent(dateInput)}`)
-      .then(response => {
-        if (response.status === 401) {
-          alert('Please sign in with Google first!');
-          return null;
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (!data) return;
-        if (data.error) {
-          console.error('Scan error:', data.error);
-          alert('Error: ' + data.error);
-          setEmailStatus('');
-        } else {
-          console.log('[Scan] Emails found:', data.emails);
-          setEmailStatus(`Found ${data.count} email(s)`);
-          setEmails(Array.isArray(data.emails) ? data.emails : []);
-          for(let i = 0; i < data.count; i++) {
-            const email = data.emails[i];
-            // Format the email data to give the model better context
-            const formattedPrompt = `From: ${email.from}\nSubject: ${email.subject}\nDate: ${email.date}\n\n${email.snippet}`;
-            submitEmail(formattedPrompt);
-          }
-        }
-      })
-      .catch(err => {
-        console.error('[Scan] Error scanning emails:', err);
+    setEmailTotal(0);
+    setEmailProcessed(0);
+    try {
+      const response = await fetch(`/api/scan-emails?since=${encodeURIComponent(dateInput)}`);
+      if (response.status === 401) {
+        alert('Please sign in with Google first!');
+        return;
+      }
+
+      const data = await response.json();
+      if (data.error) {
+        console.error('Scan error:', data.error);
+        alert('Error: ' + data.error);
         setEmailStatus('');
-      })
-      .finally(() => {
-        console.log('[Scan] Done, clearing loading state');
-        setScanLoading(false);
-      });
+        return;
+      }
+
+      const emailsToProcess = Array.isArray(data.emails) ? data.emails : [];
+      console.log('[Scan] Emails found:', emailsToProcess);
+      setEmailTotal(emailsToProcess.length);
+      setEmailStatus(`Found ${emailsToProcess.length} email(s)`);
+      setEmails(emailsToProcess);
+
+      for (let i = 0; i < emailsToProcess.length; i += 1) {
+        const email = emailsToProcess[i];
+        const formattedPrompt = `From: ${email.from}\nSubject: ${email.subject}\nDate: ${email.date}\n\n${email.snippet}`;
+        setEmailStatus(`Processing ${i + 1} of ${emailsToProcess.length}...`);
+        await submitEmail(formattedPrompt);
+        setEmailProcessed(i + 1);
+      }
+
+      if (emailsToProcess.length) {
+        setEmailStatus(`Processed ${emailsToProcess.length} email(s)`);
+      }
+    } catch (err) {
+      console.error('[Scan] Error scanning emails:', err);
+      setEmailStatus('');
+    } finally {
+      console.log('[Scan] Done, clearing loading state');
+      setScanLoading(false);
+    }
       
   }
 
@@ -297,6 +300,9 @@ function App() {
           <div className="stack">
             <button className="primary" onClick={scanEmails} disabled={scanLoading}>{scanLoading ? 'Scanning...' : 'Scan Emails'}</button>
             {emailStatus && <p className="status-text">{emailStatus}</p>}
+            {emailTotal > 0 && (
+              <p className="status-text">Progress: {emailProcessed}/{emailTotal}</p>
+            )}
             {scanLoading && <div className="inline-loader"><span className="spinner" /> Waiting for Gmail...</div>}
           </div>
         </div>
@@ -330,28 +336,7 @@ function App() {
           )}
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <p className="eyebrow">Emails</p>
-              <h3>Recent scanned emails</h3>
-            </div>
-          </div>
-          {emails.length === 0 ? (
-            <p className="muted">No emails stored. Scan to import recent threads.</p>
-          ) : (
-            <ul className="email-list">
-              {emails.map((email, idx) => (
-                <li key={idx}>
-                  <p className="label">{email.from}</p>
-                  <p className="email-subject">{email.subject}</p>
-                  <p className="muted">{email.date}</p>
-                  <p className="snippet">{email.snippet}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+       
       </section>
 
       <section className="card jobs-card">

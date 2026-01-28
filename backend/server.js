@@ -213,7 +213,7 @@ app.get('/api/scan-emails', async (req, res) => {
     const response = await gmail.users.messages.list({
       userId: 'me',
       q: `category:primary label:INBOX after:${dateString}`,
-      maxResults: 100 // Limit to 100 emails
+      maxResults: 15 // Limit to 15 emails
     });
 
     const messages = response.data.messages || [];

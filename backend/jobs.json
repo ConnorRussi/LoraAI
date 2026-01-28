@@ -1,1 +1,27 @@
-[]
+[
+  {
+    "job": "CBRE Role",
+    "company": "CBRE",
+    "status": "interviewing"
+  },
+  {
+    "job": "R&D Engineering Co-op",
+    "company": "CAE",
+    "status": "rejected"
+  },
+  {
+    "job": "JR115298 - Intern I - Software Engineering",
+    "company": "Dexcom",
+    "status": "rejected"
+  },
+  {
+    "job": "JR11527",
+    "company": "Dexcom",
+    "status": "rejected"
+  },
+  {
+    "job": "Nextdoor Role",
+    "company": "Nextdoor",
+    "status": "applied"
+  }
+]
