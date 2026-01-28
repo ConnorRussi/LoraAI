@@ -31,11 +31,21 @@ function App() {
     fetch( '/auth/me', {
       credentials: 'include' // include cookies
     })
-      .then(response => response.json())
+      .then(response => {
+        console.log('[Auth] /auth/me response status:', response.status);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
-        console.log('[Auth] /auth/me response user:', data.user);
-        setUser(data.user);
-        setSuccessModalOpen(true);
+        console.log('[Auth] /auth/me response:', data);
+        if (data.user) {
+          setUser(data.user);
+          setSuccessModalOpen(true);
+        } else {
+          console.error('[Auth] No user in response:', data);
+        }
       })
       .catch(err => {
         console.error('Error fetching user info:', err);
