@@ -22,8 +22,7 @@ function redirectToGoogle(req, res) {
       'profile',
       'https://www.googleapis.com/auth/gmail.readonly' 
     ],
-    prompt: 'consent',
-    redirect_uri: process.env.CLIENT_URL + '/auth/google/callback'
+    prompt: 'consent'
   });
   res.redirect(url);
 }
