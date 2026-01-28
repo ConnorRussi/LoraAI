@@ -23,7 +23,7 @@ function redirectToGoogle(req, res) {
       'https://www.googleapis.com/auth/gmail.readonly' 
     ],
     prompt: 'consent',
-    redirect_uri: process.env.GOOGLE_REDIRECT_URI
+    redirect_uri: process.env.CLIENT_URL + '/auth/google/callback'
   });
   res.redirect(url);
 }
