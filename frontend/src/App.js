@@ -312,6 +312,27 @@ function App() {
         <div className="card">
           <div className="card-header">
             <div>
+              <p className="eyebrow">Account</p>
+              <h3>Signed in user</h3>
+            </div>
+          </div>
+          {user ? (
+            <div className="user-meta">
+              <img src={user.picture} alt="User Profile" className="avatar" onError={(e) => { console.warn('[Auth] Avatar failed to load, src=', user.picture); e.target.style.display = 'none'; }} />
+              <div>
+                <p className="label">Name</p>
+                <p>{user.name}</p>
+                <p className="label">Email</p>
+                <p>{user.email}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="muted">Not signed in yet. Click "Sign in with Google" to continue.</p>
+          )}
+        </div>
+        <div className="card">
+          <div className="card-header">
+            <div>
               <p className="eyebrow">Model Assist</p>
               <h3>Generate a job entry</h3>
             </div>
