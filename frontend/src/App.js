@@ -17,8 +17,10 @@ function App() {
   const [emailTotal, setEmailTotal] = useState(0);
   const [emailProcessed, setEmailProcessed] = useState(0);
   const jobsTableRef = useRef(); // <-- Add this line
+  const [serverOnline, setServerOnline] = useState(true);
 
   
+
 
   //login logic
   function LoginHandler() {
@@ -151,6 +153,8 @@ function App() {
 
   //SEND EMAIL TO API AND PROCESS RESPONSE
   async function submitEmail(promptText) {
+    // Check server status before submitting
+    
     console.log('[AI] Submitting prompt:', promptText);
     setAiLoading(true);
     try {
@@ -180,20 +184,19 @@ function App() {
     }
   }
 
-  function pingServer() {
-    fetch('/api/ping', { method: 'GET' })
-      .then(response => response.json())
-      .then(data => {
-        alert('Server response: ' + data.message);
-      })
-      .catch(err => {
-        console.error('Error pinging server:', err);
-        alert('Error pinging server: ' + err.message);
-      });
+  async function pingServer() {
+    let online = await checkServerOnline();
+    if(online){
+      alert('Server is online');
+    } else {
+      alert('Server is offline');
+    }
   }
 
   // Example call to scan emails
   async function scanEmails() {
+    
+    
     const dateInput = window.prompt("Enter start date (MM/DD/YYYY):", "01/01/2026");
     if (!dateInput) return;
 
@@ -272,8 +275,41 @@ function App() {
   };
 
 
+  // Checks if the server is online and updates state
+  async function checkServerOnline() {
+    try {
+      const response = await fetch('/api/ping', {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000)
+      });
+      let serverOn = response.message === 'pong';
+      // serverOn = true; // Override to true if needed
+      setServerOnline(serverOn);
+      console.log('[Server] checkServerOnline response.ok:', serverOn);
+      return serverOn;
+    } catch (err) {
+      setServerOnline(false);
+      return false;
+    }
+  }
+
+  
+
+  useEffect(() => {
+    // Check server status on mount/refresh
+    checkServerOnline();
+    // Optionally, check periodically
+    const interval = setInterval(checkServerOnline, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="app-shell">
+      {!serverOnline && (
+        <div className="server-offline-banner">
+          <p>Warning: The AI server appears to be offline. Some features may not work. Please reach out to the owner to get the server turned on</p>
+        </div>
+      )}
       {successModalOpen && (
         <div className="modal">
           <div className="modal-content">
@@ -301,14 +337,20 @@ function App() {
           <p className="lede">Connect with Google, pull recent emails, and keep a tidy list of job leads. Click any job row to remove it instantly.</p>
           <div className="cta-row">
             <button className="primary" onClick={() => window.location.href = `${serverUrl}/auth/google`}>Sign in with Google</button>
-            <button className="ghost" onClick={pingServer}>Ping API</button>
+            <button className="ghost" onClick={pingServer}>Check Server</button>
           </div>
         </div>
         <div className="panel">
           <h3>Scan Gmail</h3>
           <p>Pull recent emails and let the model turn them into job entries.</p>
           <div className="stack">
-            <button className="primary" onClick={scanEmails} disabled={scanLoading}>{scanLoading ? 'Scanning...' : 'Scan Emails'}</button>
+            <button className="primary" onClick={()=>{
+              if(!serverOnline){
+                alert('Server is offline. Please start the server before scanning emails.');
+                return;
+              }
+              scanEmails();
+            }} disabled={scanLoading}>{scanLoading ? 'Scanning...' : 'Scan Emails'}</button>
             {emailStatus && <p className="status-text">{emailStatus}</p>}
             {emailTotal > 0 && (
               <p className="status-text">Progress: {emailProcessed}/{emailTotal}</p>
@@ -354,7 +396,17 @@ function App() {
             rows={6}
           />
           <div className="card-actions">
-            <button className="primary" onClick={() => submitEmail(prompt)} disabled={aiLoading}>
+            <button
+              className="primary"
+              onClick={() => {
+                if (!serverOnline) {
+                  alert('Server is not online. Please try again.');
+                  return;
+                }
+                submitEmail(prompt);
+              }}
+              disabled={aiLoading}
+            >
               {aiLoading ? 'Generating...' : 'Submit Prompt'}
             </button>
           </div>

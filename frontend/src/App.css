@@ -8,6 +8,16 @@
   font-family: "Space Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
+.server-offline-banner {
+  background-color: #b91c1c;
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  text-align: center;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
 .hero {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
