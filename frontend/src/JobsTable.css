@@ -1,0 +1,36 @@
+.jobs-card {
+  margin-bottom: 32px;
+}
+
+.jobs-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.jobs-table th,
+.jobs-table td {
+  padding: 12px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.jobs-table th {
+  color: #cbd5e1;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.jobs-table tr {
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.08s ease;
+}
+
+.jobs-table tr:hover {
+  background: rgba(99, 102, 241, 0.12);
+  transform: translateY(-1px);
+}
+
+.jobs-table tr.selected {
+  background: rgba(34, 197, 94, 0.14);
+}

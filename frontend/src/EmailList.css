@@ -1,0 +1,26 @@
+.email-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.email-list li {
+  background: #0b1224;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.email-subject {
+  margin: 4px 0;
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.snippet {
+  color: #cbd5e1;
+  margin: 6px 0 0 0;
+  line-height: 1.5;
+}

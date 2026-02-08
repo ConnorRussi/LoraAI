@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import './App.css';
+import './App.css'; // Common styles
+import './AppShell.css';
+import './Hero.css';
+import './Card.css';
+import './EmailList.css';
+import './JobsTable.css';
+import './Buttons.css';
+import './Modal.css';
+import './UserMeta.css';
 
 import { JobsTable } from './JobsTable';
 import { getFartherJob, jobExists } from './jobUtils.js';

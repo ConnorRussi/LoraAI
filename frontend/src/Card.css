@@ -1,0 +1,57 @@
+.card {
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.card h3 {
+  margin: 0;
+  color: #e2e8f0;
+}
+
+.card textarea {
+  width: 100%;
+  background: #0b1224;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  padding: 12px;
+  color: #e2e8f0;
+  resize: vertical;
+  min-height: 120px;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.card-actions.inline {
+  align-items: center;
+}
+
+.result {
+  margin-top: 14px;
+  background: #0b1224;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.result pre {
+  margin: 0;
+  white-space: pre-wrap;
+  color: #cbd5e1;
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+}

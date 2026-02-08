@@ -1,0 +1,17 @@
+.user-meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.user-meta img {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(99, 102, 241, 0.6);
+}
+
+.avatar {
+  display: block;
+}
