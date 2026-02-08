@@ -17,6 +17,7 @@ const JobsTable = forwardRef(({ onRowRemove }, ref) => {
                 } else {
                     setJobs([]);
                 }
+                console.log("fetched jobs: ", jobs);
             })
             .catch(err => {
                 console.error('Error fetching jobs:', err);
@@ -70,7 +71,7 @@ const JobsTable = forwardRef(({ onRowRemove }, ref) => {
                         onClick={() => handleRowClick(index)}
                         className={selectedJobIndex === index ? 'selected' : ''}
                     >
-                        <td>{job.job}</td>
+                        <td>{job.job || job.job_title}</td>
                         <td>{job.company}</td>
                         <td>{job.status}</td>
                     </tr>

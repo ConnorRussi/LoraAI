@@ -1,5 +1,6 @@
 // const { OAuth2Client } = require('google-auth-library');
 import { OAuth2Client } from 'google-auth-library';
+import { findOrCreateUser } from './dbJobs.js';
 
 
 
@@ -44,7 +45,15 @@ async function googleCallback(req, res) {
     });
     const payload = ticket.getPayload();
 
-    // 2. Store user in session
+    // 2. Create or find user in database
+    try {
+      await findOrCreateUser(payload.sub, payload.name, payload.email);
+    } catch (dbError) {
+      console.error('Database error during user creation:', dbError);
+      // Continue with session creation even if DB operation fails
+    }
+
+    // 3. Store user in session
     req.session.tokens = tokens; // Save tokens to make API calls later
     req.session.user = {
       googleId: payload.sub,
@@ -53,14 +62,14 @@ async function googleCallback(req, res) {
       picture: payload.picture
     };
 
-    // 3. Save session before redirecting (IMPORTANT for production)
+    // 4. Save session before redirecting (IMPORTANT for production)
     req.session.save((err) => {
       if (err) {
         console.error('Session save error:', err);
         return res.status(500).send('Session save error');
       }
 
-      // 4. Redirect back to frontend (configure via CLIENT_URL for production)
+      // 5. Redirect back to frontend (configure via CLIENT_URL for production)
       const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
       const redirectTarget = `${clientUrl}/?login=success`;
       res.redirect(redirectTarget);

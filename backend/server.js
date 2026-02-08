@@ -132,6 +132,7 @@ app.post('/api/generate', async (req, res) => {
 
 //Job tracking
 import { addJob, readJobs, removeJob } from './fileSaving.js';
+import { findOrCreateUser, getJobsForUser, saveJobForUser, updateJobForUser, removeJobForUser } from './dbJobs.js';
 
 app.post('/api/addJob', (req, res) => {
 
@@ -140,23 +141,60 @@ app.post('/api/addJob', (req, res) => {
     return res.status(400).json({ error: 'Missing or invalid job object' });
   }
 
-  try {
-    addJob(job);
-    return res.json({ message: 'Job added successfully' });
-  } catch (error) {
-    console.error('Error adding job:', error?.message || error);
-    return res.status(500).json({ error: 'Error adding job' });
+  // Map job fields for DB
+  function mapJobFields(job) {
+    return {
+      googleid: job.googleid,
+      job_title: job.job || job.job_title || '',
+      company: job.company || '',
+      status: job.status || '',
+      application_date: job.application_date || null,
+      job_url: job.job_url || '',
+      notes: job.notes || ''
+    };
+  }
+
+  if (req.session.user) {
+    // Save job to DB
+    const dbJob = mapJobFields({ ...job, googleid: req.session.user.googleId });
+    saveJobForUser(dbJob)
+      .then(() => res.json({ message: 'Job added successfully' }))
+      .catch(error => {
+        console.error('Error adding job to DB:', error?.message || error);
+        res.status(500).json({ error: 'Error adding job to DB' });
+      });
+  } else {
+    // Save job locally
+    try {
+      addJob(job);
+      return res.json({ message: 'Job added successfully' });
+    } catch (error) {
+      console.error('Error adding job:', error?.message || error);
+      return res.status(500).json({ error: 'Error adding job' });
+    }
   }
 });
 
 app.get('/api/jobs', (req, res) => {
   console.log('Received request for jobs');
-  try {
-    const jobs = readJobs();
-    return res.json({ jobs });
-  } catch (error) {
-    console.error('Error reading jobs:', error?.message || error);
-    return res.status(500).json({ error: 'Error reading jobs' });
+  if (req.session.user) {
+    // Logged-in: pull jobs from DB
+    const { googleId } = req.session.user;
+    getJobsForUser(googleId)
+      .then(jobs => res.json({ jobs }))
+      .catch(error => {
+        console.error('Error reading jobs from DB:', error?.message || error);
+        res.status(500).json({ error: 'Error reading jobs from DB' });
+      });
+  } else {
+    // Not logged-in: use local cache
+    try {
+      const jobs = readJobs();
+      return res.json({ jobs });
+    } catch (error) {
+      console.error('Error reading jobs:', error?.message || error);
+      return res.status(500).json({ error: 'Error reading jobs' });
+    }
   }
 });
 
@@ -165,12 +203,30 @@ app.post('/api/removeJob', async (req, res) => {
   if (typeof index !== 'number' || index < 0) {
     return res.status(400).json({ error: 'Missing or invalid index' });
   }
-  try {
-    await removeJob(index);
-    return res.json({ message: `Job at index ${index} removed successfully` });
-  } catch (error) {
-    console.error('Error removing job:', error?.message || error);
-    return res.status(500).json({ error: 'Error removing job' });
+  
+  if (req.session.user) {
+    // Remove job from DB
+    const { googleId } = req.session.user;
+    try {
+      const success = await removeJobForUser(googleId, index);
+      if (success) {
+        return res.json({ message: `Job at index ${index} removed successfully` });
+      } else {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+    } catch (error) {
+      console.error('Error removing job from DB:', error?.message || error);
+      return res.status(500).json({ error: 'Error removing job from DB' });
+    }
+  } else {
+    // Remove job locally
+    try {
+      await removeJob(index);
+      return res.json({ message: `Job at index ${index} removed successfully` });
+    } catch (error) {
+      console.error('Error removing job:', error?.message || error);
+      return res.status(500).json({ error: 'Error removing job' });
+    }
   }
 });
 

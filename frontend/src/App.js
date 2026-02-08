@@ -285,26 +285,20 @@ function App() {
 
   // Checks if the server is online and updates state
   async function checkServerOnline() {
-    console.log('[Server] Checking if server is online...');
-    fetch('/api/ping', { method: 'GET' })
-      .then(response => response.json())
-      .then(data => {
-        console.log('[Server] Ping response:', data);
-        if (data.message === 'pong') {
-          setServerOnline(true);
-          console.log('[Server] Server is online');
-          return true;
-        }
-        else {          
-          setServerOnline(false);
-          console.warn('[Server] Server ping did not return message "pong", marking as offline');
-        }
-      })
-      .catch(err => {
-        setServerOnline(false);
-        console.error('[Server] Error pinging server:', err);
-      });
+    try {
+      console.log('[Server] Checking if server is online...');
+      const response = await fetch('/api/ping', { method: 'GET' });
+      const data = await response.json();
+      console.log('[Server] Ping response:', data);
+      const isOnline = data.message === 'pong';
+      setServerOnline(isOnline);
+      console.log('[Server] Server is online:', isOnline);
+      return isOnline;
+    } catch (err) {
+      setServerOnline(false);
+      console.error('[Server] Error pinging server:', err);
       return false;
+    }
   }
 
   

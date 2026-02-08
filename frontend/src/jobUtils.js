@@ -52,6 +52,11 @@ function isGenericTitle(title, company) {
   return pattern.test(title.trim());
 }
 
+// Helper function to get job title from either format
+function getJobTitle(job) {
+  return job.job_title || job.job || '';
+}
+
 /**
  * Compute similarity score between two job objects.
  * Improved logic for generic titles and company weighting.
@@ -59,8 +64,10 @@ function isGenericTitle(title, company) {
 function jobSimilarity(job1, job2) {
   if (!job1 || !job2) return 0;
   const companyScore = stringSimilarity(job1.company, job2.company);
-  const isGeneric1 = isGenericTitle(job1.job, job1.company);
-  const isGeneric2 = isGenericTitle(job2.job, job2.company);
+  const title1 = getJobTitle(job1);
+  const title2 = getJobTitle(job2);
+  const isGeneric1 = isGenericTitle(title1, job1.company);
+  const isGeneric2 = isGenericTitle(title2, job2.company);
   if (isGeneric1 || isGeneric2) {
     // If either title is generic, only match if company matches exactly
     if (job1.company && job2.company && job1.company.toLowerCase() === job2.company.toLowerCase()) {
@@ -70,7 +77,7 @@ function jobSimilarity(job1, job2) {
     }
   }
   // Otherwise, use normal weighted average
-  const titleScore = stringSimilarity(job1.job, job2.job);
+  const titleScore = stringSimilarity(title1, title2);
   return 0.7 * titleScore + 0.3 * companyScore;
 }
 

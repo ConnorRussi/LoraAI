@@ -23,5 +23,15 @@
     "job": "Nextdoor Role",
     "company": "Nextdoor",
     "status": "applied"
+  },
+  {
+    "job": "R&D Software Development",
+    "company": "Halliburton",
+    "status": "interviewing"
+  },
+  {
+    "job": "Software Intern",
+    "company": "Herzog",
+    "status": "rejected"
   }
 ]
