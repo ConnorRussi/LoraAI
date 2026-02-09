@@ -13,7 +13,7 @@ import { JobsTable } from './JobsTable';
 import { getFartherJob, jobExists } from './jobUtils.js';
 
 function App() {
-  const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
+  const serverUrl = process.env.SERVER_URL || 'http://localhost:5000';
   const [user, setUser] = useState(null);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
