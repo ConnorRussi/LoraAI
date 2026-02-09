@@ -12,8 +12,27 @@ import './UserMeta.css';
 import { JobsTable } from './JobsTable';
 import { getFartherJob, jobExists } from './jobUtils.js';
 
+
+// Helper: determine if running locally
+function isLocalhost() {
+  return (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  );
+}
+
+// Helper: get backend base URL
+function getServerUrl() {
+  if (process.env.REACT_APP_SERVER_URL) {
+    return process.env.REACT_APP_SERVER_URL;
+  }
+  return isLocalhost()
+    ? 'http://localhost:5000'
+    : 'https://loraai.onrender.com';
+}
+
 function App() {
-  const serverUrl = process.env.SERVER_URL || 'http://localhost:5000';
+  const serverUrl = getServerUrl();
   const [user, setUser] = useState(null);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
@@ -344,7 +363,12 @@ function App() {
           <h1>Track roles, scan Gmail, and generate clean job entries.</h1>
           <p className="lede">Connect with Google, pull recent emails, and keep a tidy list of job leads. Click any job row to remove it instantly.</p>
           <div className="cta-row">
-            <button className="primary" onClick={() => window.location.href = `${serverUrl}/auth/google`}>Sign in with Google</button>
+            <button className="primary" onClick={() => {
+              // console.log(`${serverUrl}/auth/google`);
+              window.location.href = `${serverUrl}/auth/google`
+              }}>
+                Sign in with Google
+            </button>
             <button className="ghost" onClick={pingServer}>Check Server</button>
           </div>
         </div>
