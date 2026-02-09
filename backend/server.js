@@ -43,13 +43,13 @@ app.use(express.json());
 // For a large-scale production app, you would use a dedicated store like 'connect-redis'.
 app.use(session({
   name: 'sid',
-  secret: process.env.SESSION_SECRET || 'dev_secret_key',
+  secret: process.env.SESSION_SECRET || 'change_this_in_production_' + Date.now(),
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,                 // Prevents client-side JS from reading the cookie
     secure: process.env.NODE_ENV === 'production', // true = only send over HTTPS (Required for Render)
-    sameSite: 'lax',                // CSRF protection
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // Enhanced CSRF protection for production
     maxAge: 24 * 60 * 60 * 1000     // 1 day
   }
 }));
@@ -64,6 +64,8 @@ app.get("/auth/google", redirectToGoogle);
 app.get("/auth/google/callback", googleCallback);
 
 app.get('/auth/me', (req, res) => {
+  console.log('Session ID:', req.sessionID);
+  console.log('Session user:', req.session.user ? `${req.session.user.name} (${req.session.user.googleId})` : 'Not logged in');
   if (req.session.user) {
     res.json({ user: req.session.user });
   } else {
@@ -177,11 +179,16 @@ app.post('/api/addJob', (req, res) => {
 
 app.get('/api/jobs', (req, res) => {
   console.log('Received request for jobs');
+  console.log('Session ID:', req.sessionID);
+  console.log('Session user:', req.session.user ? `${req.session.user.name} (${req.session.user.googleId})` : 'Not logged in');
   if (req.session.user) {
     // Logged-in: pull jobs from DB
     const { googleId } = req.session.user;
     getJobsForUser(googleId)
-      .then(jobs => res.json({ jobs }))
+      .then(jobs => {
+        console.log(`Found ${jobs.length} jobs for user ${googleId}`);
+        res.json({ jobs });
+      })
       .catch(error => {
         console.error('Error reading jobs from DB:', error?.message || error);
         res.status(500).json({ error: 'Error reading jobs from DB' });

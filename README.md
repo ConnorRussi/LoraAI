@@ -96,10 +96,12 @@ GOOGLE_REDIRECT_URI=https://your-app.onrender.com/auth/google/callback
 CLIENT_URL=https://your-app.onrender.com
 NODE_ENV=production
 DATABASE_URL=your-postgres-connection-string
-SESSION_SECRET=your-random-secret-string
+SESSION_SECRET=your-random-secret-string-for-sessions
 AI_API_KEY=your-api-key
 AI_API_URL=https://api.connorrussi.com
 ```
+
+**Important:** Generate a strong, random `SESSION_SECRET` for production to ensure proper user session isolation.
 
 ### Google OAuth Console Setup
 

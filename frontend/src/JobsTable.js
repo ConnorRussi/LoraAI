@@ -6,7 +6,9 @@ const JobsTable = forwardRef(({ onRowRemove }, ref) => {
 
     function updateTable() {
         console.log("Updating jobs table...");
-        fetch('/api/jobs')
+        fetch('/api/jobs', {
+            credentials: 'include'
+        })
             .then(response => response.json())
             .then(data => {
                 // Ensure jobs is always an array

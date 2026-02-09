@@ -118,6 +118,7 @@ function App() {
           const response = await fetch('/api/removeJob', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ index: index })
           });
           const data = await response.json();
@@ -137,6 +138,7 @@ function App() {
       const response = await fetch('/api/addJob', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ job: job })
       });
       const data = await response.json();
@@ -159,6 +161,7 @@ function App() {
       fetch('/api/removeJob', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ index: jobIndex })
       })
       .then(response => response.json())
@@ -188,6 +191,7 @@ function App() {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ prompt: promptText })
       });
       const data = await response.json();
@@ -234,7 +238,9 @@ function App() {
     setEmailTotal(0);
     setEmailProcessed(0);
     try {
-      const response = await fetch(`/api/scan-emails?since=${encodeURIComponent(dateInput)}`);
+      const response = await fetch(`/api/scan-emails?since=${encodeURIComponent(dateInput)}`, {
+        credentials: 'include'
+      });
       if (response.status === 401) {
         alert('Please sign in with Google first!');
         return;
@@ -290,6 +296,7 @@ function App() {
         await fetch('/api/removeJob', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ index: i })
         });
       } catch (err) {
@@ -306,7 +313,10 @@ function App() {
   async function checkServerOnline() {
     try {
       console.log('[Server] Checking if server is online...');
-      const response = await fetch('/api/ping', { method: 'GET' });
+      const response = await fetch('/api/ping', { 
+        method: 'GET',
+        credentials: 'include'
+      });
       const data = await response.json();
       console.log('[Server] Ping response:', data);
       const isOnline = data.message === 'pong';
