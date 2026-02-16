@@ -10,7 +10,7 @@ import './Modal.css';
 import './UserMeta.css';
 
 import { JobsTable } from './JobsTable';
-import { getFartherJob, jobExists } from './jobUtils.js';
+import { getFartherJob, jobExists, mergeJobs } from './jobUtils.js';
 
 
 // Helper: determine if running locally
@@ -106,33 +106,47 @@ function App() {
     let similarJob = jobExists(existingJobs, job);
     console.log('Similar job check result:', similarJob);
     if (similarJob !== null) {
-      console.log('Similar job already exists, evaluating which is farther between: ', similarJob, job);
-      let fartherJob = getFartherJob(similarJob, job);
-      console.log('Farther job is: ', fartherJob);
-      //remove job if we are about to add a farther one
-      if (fartherJob === job) {
-        console.log("removing similar job as new job is farther");
-        //new job is farther, so remove the existing one and add the new one
-        let index = existingJobs.indexOf(similarJob);
-        try {
-          const response = await fetch('/api/removeJob', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ index: index })
-          });
-          const data = await response.json();
-          console.log('Removed similar job at index ', index, ': ', data);
-          await jobsTableRef.current?.updateTable?.();
-        } catch (err) {
-          console.error('Error removing similar job:', err);
+      // Merge titles/status so we don't accidentally overwrite a descriptive title
+      const merged = mergeJobs(similarJob, job);
+      // Normalize existing job shape for comparison
+      const existingNormalized = {
+        job: similarJob.job || similarJob.job_title || '',
+        company: similarJob.company || '',
+        status: similarJob.status || ''
+      };
+      // If merge doesn't change the core fields (title/company/status), skip adding
+      if (
+        merged.job === existingNormalized.job &&
+        merged.company === existingNormalized.company &&
+        (merged.status || '') === (existingNormalized.status || '')
+      ) {
+        console.log('No meaningful update after merge; skipping add.');
+        return;
+      }
+
+      // Otherwise replace the existing job with the merged version
+      console.log('Replacing existing job with merged job:', merged);
+      let index = existingJobs.indexOf(similarJob);
+      try {
+        const response = await fetch('/api/removeJob', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ index: index })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          console.error('Failed to remove similar job, aborting merge:', data);
+          return;
         }
-      }
-      else {
-        console.log("not adding job as existing one is farther or equal");
-        return; //existing job is farther or equal, so do not add the new one
-      }
-    }
+        console.log('Removed similar job at index ', index, ': ', data);
+        await jobsTableRef.current?.updateTable?.();
+        // replace job payload with merged version for adding
+        job = merged;
+      } catch (err) {
+        console.error('Error removing similar job:', err);
+        return; // Don't add the merged job if removal failed
+      }    }
     // Add each answer to the CSV
     try {
       const response = await fetch('/api/addJob', {

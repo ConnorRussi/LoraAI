@@ -48,8 +48,36 @@ function stringSimilarity(a, b) {
 
 function isGenericTitle(title, company) {
   if (!title || !company) return false;
-  const pattern = new RegExp(`^\\s*${company}\\s+(role|position|job)\\s*$`, 'i');
+  // Escape company string before embedding in RegExp to avoid accidental metacharacter interpretation
+  const esc = escapeRegExp(company);
+  const pattern = new RegExp(`^\\s*${esc}\\s+(role|position|job)\\s*$`, 'i');
   return pattern.test(title.trim());
+}
+
+function normalizeTitle(title) {
+  if (!title) return '';
+  return title.trim();
+}
+
+// Escape string for safe use in RegExp construction
+function escapeRegExp(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Score based on token count after removing company mentions and generic words
+function descriptiveScore(title, company) {
+  if (!title) return 0;
+  // Remove company mentions and simple generic words, then score by token count
+  let t = title.toLowerCase();
+  if (company) {
+    const esc = escapeRegExp(company.toLowerCase());
+    t = t.replace(new RegExp(esc, 'g'), '');
+  }
+  t = t.replace(/\b(role|position|job|opportunity|opening)\b/gi, '');
+  // Count significant tokens
+  const tokens = t.split(/\s+/).filter(s => s.length > 0);
+  return tokens.length;
 }
 
 // Helper function to get job title from either format
@@ -90,13 +118,54 @@ function getFartherJob(job1, job2) {
   const tiers = ['applied', 'technical assessment', 'interviewing', 'rejected'];
   const idx1 = tiers.findIndex(t => job1.status && job1.status.toLowerCase().includes(t));
   const idx2 = tiers.findIndex(t => job2.status && job2.status.toLowerCase().includes(t));
-  if (idx1 === -1 && idx2 === -1) return job1;
-  if (idx1 === -1) return job2;
-  if (idx2 === -1) return job1;
-  // If both are at the same tier, keep the one already added (job1)
-  if (idx1 === idx2) return job1;
-  // Lower index = earlier stage, so pick the higher index
-  return idx1 > idx2 ? job1 : job2;
+/**
+ * Merge two job objects into a single representative job.
+ * - Keeps the status from the job farther along the process.
+ * - Chooses the more descriptive title (non-generic, more tokens).
+ * - Prefers non-empty existing company over incoming.
+ */  return idx1 > idx2 ? job1 : job2;
 }
 
-export { stringSimilarity, jobSimilarity, getFartherJob, jobExists };
+/**
+ * Merge two job objects into a single representative job.
+ * - Keeps the status from the job farther along the process.
+ * - Chooses the more descriptive title (non-generic, more tokens).
+ * - Prefers non-empty company, date, url, notes when available.
+ */
+function mergeJobs(existingJob, incomingJob) {
+  const farther = getFartherJob(existingJob, incomingJob);
+  const status = (farther && farther.status) ? farther.status : (existingJob.status || incomingJob.status || '');
+
+  const t1 = getJobTitle(existingJob) || '';
+  const t2 = getJobTitle(incomingJob) || '';
+  const company1 = existingJob.company || '';
+  const company2 = incomingJob.company || '';
+
+  // Prefer non-generic title
+  const generic1 = isGenericTitle(t1, company1);
+  const generic2 = isGenericTitle(t2, company2);
+  let chosenTitle = '';
+  if (generic1 && !generic2) chosenTitle = normalizeTitle(t2);
+  else if (!generic1 && generic2) chosenTitle = normalizeTitle(t1);
+  else {
+    // pick by descriptive score (more tokens)
+    //Not the best method but it helps in some cases where the title is generic but one has more info than the other (e.g. "Software Engineer" vs "Software Engineer - Frontend")
+    //Will run into issues with titles that are long but not descriptive, but in those cases it doesn't really matter which one we pick since they're both not great
+    const s1 = descriptiveScore(t1, company1);
+    const s2 = descriptiveScore(t2, company2);
+    if (s2 > s1) chosenTitle = normalizeTitle(t2);
+    else chosenTitle = normalizeTitle(t1);
+  }
+
+  // Company: prefer existing non-empty, otherwise incoming
+  const company = existingJob.company && existingJob.company.trim() ? existingJob.company : incomingJob.company || '';
+
+
+  return {
+    job: chosenTitle,
+    company,
+    status
+  };
+}
+
+export { stringSimilarity, jobSimilarity, getFartherJob, jobExists, mergeJobs };

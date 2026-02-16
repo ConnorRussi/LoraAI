@@ -19,6 +19,7 @@ import session from 'express-session';
 // const oAuth = require('./oAuth.js');
 import { redirectToGoogle, googleCallback } from './oAuth.js';
 
+const MAX_EMAILS_TO_SCAN = 300;
 // Check for required env vars
 if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
   console.error('Missing required Google OAuth env vars. Ensure backend/.env contains GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and GOOGLE_REDIRECT_URI');
@@ -276,8 +277,7 @@ app.get('/api/scan-emails', async (req, res) => {
     const response = await gmail.users.messages.list({
       userId: 'me',
       q: `category:primary label:INBOX after:${dateString}`,
-      maxResults: 15 // Limit to 15 emails
-    });
+      maxResults: MAX_EMAILS_TO_SCAN    });
 
     const messages = response.data.messages || [];
     const emails = [];
